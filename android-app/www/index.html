@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0A246A">
+    <title>Videos SN</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: system-ui, sans-serif;
+            background: #0A246A;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+            padding: 20px;
+        }
+        .msg { font-size: 1.1rem; opacity: .9; }
+        .dot { animation: dot 1s infinite; }
+        @keyframes dot { 33% { opacity: 0; } 66% { opacity: 1; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <p class="msg">Cargando Videos SN<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></p>
+    <script>
+        (function () {
+            // URL de tu backend desplegado (Render, Railway, etc.). Sin barra final.
+            var backendUrl = 'https://gensn-video.onrender.com';
+            // Para probar con tu Mac en la misma red: 'http://192.168.1.XXX:8000'
+            if (window.SN_API_BASE) backendUrl = window.SN_API_BASE;
+            try {
+                var saved = localStorage.getItem('SN_API_BASE');
+                if (saved) backendUrl = saved;
+            } catch (e) {}
+            window.SN_API_BASE = backendUrl;
+            window.location.replace(backendUrl + '/gensn-video.html');
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+# Deploy con Docker = Python + ffmpeg incluidos. Conectá el repo en Render y usá "Apply" o Deploy.
+services:
+  - type: web
+    name: gensn-video
+    runtime: docker
+    healthCheckPath: /

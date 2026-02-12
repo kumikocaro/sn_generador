@@ -1,0 +1,14 @@
+{
+  "name": "Videos SN",
+  "short_name": "Videos SN",
+  "description": "Generador de videos para Instagram con marca de agua SN",
+  "start_url": "/gensn-video.html",
+  "display": "standalone",
+  "background_color": "#0A246A",
+  "theme_color": "#0A246A",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/logosn.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/logosn.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

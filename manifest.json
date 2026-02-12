@@ -1,0 +1,24 @@
+{
+  "name": "Generador de Plantillas Salta News",
+  "short_name": "Placas SN",
+  "description": "Generador de placas para Instagram y Facebook de Salta News",
+  "start_url": "/sn/gensn.html",
+  "display": "standalone",
+  "background_color": "#f0f2f5",
+  "theme_color": "#0A246A",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "http://kumodev.com/sn/snlogo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "http://kumodev.com/sn/snlogo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

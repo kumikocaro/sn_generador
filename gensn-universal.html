@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador Universal de Placas - Salta News</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0A246A">
+    <meta name="description" content="Generador universal de placas para Instagram y Facebook de Salta News - Extrae contenido de cualquier sitio web">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" href="http://kumodev.com/sn/snlogo.png">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Montserrat:ital,wght@0,400;0,900;1,400;1,700;1,900&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- DISEÑO ORIGINAL --- */
+        body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .main-container { max-width: 1200px; margin: 0 auto; }
+        #generator-view-content { display: flex; justify-content: center; align-items: flex-start; gap: 40px; flex-wrap: wrap; }
+        .controls { background-color: #ffffff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 350px; max-width: 100%; display: flex; flex-direction: column; }
+        .controls h1 { margin-top: 0; color: #333; text-align: center;}
+        .controls label { display: block; margin-top: 15px; margin-bottom: 5px; font-weight: bold; color: #555; }
+        .controls input[type="file"], .controls input[type="text"], .controls textarea, .controls select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .controls button { width: 100%; padding: 12px; margin-top: 20px; background-color: #D32F2F; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .controls button:hover { background-color: #B71C1C; }
+        .controls button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        .loader { border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #3498db; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; margin: 10px auto 0 auto; }
+        #social-section { border-top: 1px solid #eee; margin-top: 20px; padding-top: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .preview-container { box-shadow: 0 10px 20px rgba(0,0,0,0.2); width: 540px; max-width: 100%; }
+        #templateCanvas { width: 100%; height: auto; background-color: #e9e9e9; }
+        
+        .logo-sn-container { font-family: 'Montserrat', sans-serif; display: inline-flex; flex-direction: column; align-items: center; margin-bottom: 20px; align-self: center; }
+        .logo-sn-text { font-weight: 900; font-size: 72px; line-height: 0.7; margin-bottom: 0; }
+        .logo-sn-text .letter { font-style: italic; }
+        .logo-sn-text .letter-s { color: #b42727; }
+        .logo-sn-text .letter-n { color: #2a2972; margin-left: -0.15em; }
+        .logo-sn-url { font-weight: 700; font-style: italic; font-size: 16px; color: #000000; letter-spacing: -0.025em; }
+        .info-banner { background-color: #e3f2fd; border-left: 4px solid #2196F3; padding: 15px; margin-bottom: 20px; border-radius: 4px; font-size: 0.9em; }
+        .info-banner strong { color: #1976D2; }
+        
+        #image-selector-container { margin-top: 15px; display: none; }
+        #image-selector-title { font-weight: bold; margin-bottom: 10px; color: #555; }
+        #image-selector-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background-color: #f9f9f9; }
+        .image-selector-item { position: relative; cursor: pointer; border: 3px solid transparent; border-radius: 4px; overflow: hidden; aspect-ratio: 1; transition: all 0.2s; }
+        .image-selector-item:hover { transform: scale(1.05); border-color: #0A246A; }
+        .image-selector-item.selected { border-color: #D32F2F; box-shadow: 0 0 10px rgba(211, 47, 47, 0.5); }
+        .image-selector-item img { width: 100%; height: 100%; object-fit: cover; }
+        .image-type-badge { position: absolute; top: 2px; right: 2px; background-color: rgba(0, 0, 0, 0.7); color: white; font-size: 8px; padding: 2px 4px; border-radius: 2px; }
+        
+        @media (max-width: 950px) { #generator-view-content { flex-direction: column; align-items: center; } .controls, .preview-container { width: 90%; } }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="info-banner">
+            <strong>🌐 Generador Universal:</strong> Extrae contenido de cualquier sitio web (WordPress, sitios de noticias, blogs, etc.) para crear placas para Instagram/Facebook.
+        </div>
+
+        <div id="generator-view">
+            <div id="generator-view-content">
+                <div class="controls">
+                    <div class="logo-sn-container">
+                        <div class="logo-sn-text"><span class="letter letter-s">S</span><span class="letter letter-n">N</span></div>
+                        <div class="logo-sn-url">saltanews.com.ar</div>
+                    </div>
+                    <h1>Generador Universal de Placas</h1>
+                    
+                    <label>URL de cualquier sitio web:</label>
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <input type="text" id="article-url-input" placeholder="https://ejemplo.com/noticia">
+                        <button id="fetch-data-btn" style="margin-top: 0; width: auto;">Extraer</button>
+                    </div>
+                    <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <button id="paste-url-btn" style="margin-top: 0; padding: 8px; background-color: #0A246A; font-size: 14px;">Pegar</button>
+                        <button id="clear-url-btn" style="margin-top: 0; padding: 8px; background-color: #6c757d; font-size: 14px;">Borrar</button>
+                    </div>
+                    <p id="url-status" style="font-size: 0.8em; color: #D32F2F; margin-top: 5px; min-height: 1.5em;"></p>
+                    <div class="loader" id="loader"></div>
+                    
+                    <div id="image-selector-container">
+                        <div id="image-selector-title">📷 Selecciona una imagen:</div>
+                        <div id="image-selector-grid"></div>
+                    </div>
+
+                    <p style="text-align:center; margin-top: 20px; font-weight:bold;">- Opciones Manuales -</p>
+                    
+                    <label>Estilo de Placa:</label>
+                    <select id="plate-style-select">
+                        <option value="clasico">Clásico</option>
+                        <option value="azul">Fondo Azul</option>
+                        <option value="superposicion">Superposición</option>
+                        <option value="solo-imagen">Solo Imagen</option>
+                    </select>
+
+                    <div id="manual-image-controls">
+                        <label>Subir Imagen Manualmente:</label>
+                        <input type="file" id="image-input" accept="image/*">
+                    </div>
+                    
+                    <div id="manual-text-controls">
+                        <label>Escribir título</label>
+                        <textarea id="text-input" rows="4" placeholder="Escribe el texto principal aquí..."></textarea>
+                        <div style="display: flex; gap: 5px; margin-top: 5px;">
+                            <button id="regenerate-title-btn" disabled style="margin-top: 0; padding: 8px; background-color: #0A246A; font-size: 14px; flex: 1;">🔄 Regenerar Título</button>
+                        </div>
+                        <label>Tamaño del Texto:</label>
+                        <select id="font-size-select">
+                            <option value="auto">Automático</option>
+                            <option value="grande">Grande</option>
+                            <option value="mediano">Mediano</option>
+                            <option value="pequeno">Pequeño</option>
+                        </select>
+                    </div>
+                    
+                    <div id="image-fit-controls">
+                        <div style="margin-top: 15px;">
+                            <input type="checkbox" id="fit-image-checkbox">
+                            <label for="fit-image-checkbox" style="display:inline;">Mostrar imagen completa</label>
+                        </div>
+                        <label>Estilo de fondo:</label>
+                        <select id="background-style-select">
+                            <option value="defecto">Por Defecto</option>
+                            <option value="blurred-image">Desenfocada</option>
+                            <option value="red-blue-gradient">Degradado SN</option>
+                            <option value="white">Blanco</option>
+                            <option value="black">Negro</option>
+                        </select>
+                    </div>
+                    
+                    <button id="download-btn">Descargar Imagen</button>
+
+                    <div id="social-section">
+                        <h2>Texto para Redes Sociales (IA)</h2>
+                        <label>Modelo de IA:</label>
+                        <select id="ai-model-select">
+                            <option value="gemini">Gemini (por defecto)</option>
+                            <option value="groq">Groq (respaldo)</option>
+                        </select>
+                        <button id="generate-social-btn">Generar Texto</button>
+                        <div class="loader" id="social-loader"></div>
+                        <textarea id="social-text-output" rows="8" placeholder="La IA escribirá aquí..."></textarea>
+                        <div id="social-buttons-container">
+                            <button id="share-btn" style="margin-top: 10px; background-color: #28a745;">Compartir</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-container">
+                    <canvas id="templateCanvas" width="1080" height="1350"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // URL del WordPress donde está el plugin de scraping universal
+        const SCRAPER_URL = 'https://www.saltanews.com.ar';
+        
+        // Claves de IA e Imágenes
+        const apiKey = 'AIzaSyBim_waPtFzRlLFgOeDd9_gyWhNzM6Euqw'; // Gemini API
+        const GROQ_API_KEY = ''; // Poner tu clave en groq.com
+        const GOOGLE_SEARCH_API_KEY = 'AIzaSyBuIhWcUtNL-dolXkj-ZcCfMt3lGoqzA6A'; // Custom Search API
+        const GOOGLE_SEARCH_ENGINE_ID = '0629bedf7da804b45'; // Custom Search Engine ID para búsqueda de imágenes de noticias
+
+        const canvas = document.getElementById('templateCanvas');
+        const ctx = canvas.getContext('2d');
+        const TEMPLATE_WIDTH = 1080;
+        const TEMPLATE_HEIGHT = 1350;
+        const SIDEBAR_WIDTH = 20;
+        const SIDEBAR_OFFSET = 40;
+        
+        let userImage = null;
+        let userText = "ESCRIBE AQUÍ TU TITULAR";
+        let articleContent = null;
+        let extractedImages = []; // NUEVO: Array de imágenes extraídas
+        let tituloOriginal = ""; // NUEVO: Guardar título original
+        
+        // Cargar el último estilo usado desde localStorage, o empezar en 0
+        let currentStyleIndex = parseInt(localStorage.getItem('sn_last_style_index') || '0', 10);
+        const STYLES_TO_ALTERNATE = ['azul', 'clasico'];
+        
+        // Función para guardar el índice del estilo en localStorage
+        function saveStyleIndex(index) {
+            localStorage.setItem('sn_last_style_index', index.toString());
+        }
+
+        // Referencias DOM
+        const els = {
+            imgIn: document.getElementById('image-input'),
+            txtIn: document.getElementById('text-input'),
+            fitChk: document.getElementById('fit-image-checkbox'),
+            bgSel: document.getElementById('background-style-select'),
+            dlBtn: document.getElementById('download-btn'),
+            urlIn: document.getElementById('article-url-input'),
+            fetchBtn: document.getElementById('fetch-data-btn'),
+            status: document.getElementById('url-status'),
+            loader: document.getElementById('loader'),
+            genBtn: document.getElementById('generate-social-btn'),
+            regenTitleBtn: document.getElementById('regenerate-title-btn'),
+            sOut: document.getElementById('social-text-output'),
+            sLoader: document.getElementById('social-loader'),
+            modelSel: document.getElementById('ai-model-select'),
+            styleSel: document.getElementById('plate-style-select'),
+            fontSel: document.getElementById('font-size-select'),
+            shareBtn: document.getElementById('share-btn'),
+            ctrlImg: document.getElementById('manual-image-controls'),
+            ctrlTxt: document.getElementById('manual-text-controls'),
+            ctrlFit: document.getElementById('image-fit-controls'),
+            sectSoc: document.getElementById('social-section'),
+            pasteBtn: document.getElementById('paste-url-btn'),
+            clearBtn: document.getElementById('clear-url-btn')
+        };
+        
+        const imageSelectorContainer = document.getElementById('image-selector-container');
+        const imageSelectorGrid = document.getElementById('image-selector-grid');
+        
+        document.fonts.ready.then(redrawCanvas);
+        updateControlsVisibility();
+
+        // NUEVO: Función para generar título alternativo con IA
+        async function generateAlternativeTitle(originalTitle, content) {
+            const prompt = `Actúa como editor de Salta News. Crea un TITULAR alternativo más atractivo y clickeable para Instagram basado en esta noticia.
+
+TÍTULO ORIGINAL: ${originalTitle}
+
+CONTENIDO: ${content.substring(0, 500)}
+
+INSTRUCCIONES:
+- Crea un titular MÁS CORTO y más impactante que el original
+- Máximo 60 caracteres
+- Debe ser claro, directo y captar atención
+- Usa lenguaje periodístico argentino formal
+- NO uses comillas
+- NO agregues información que no esté en la noticia
+- Devuelve SOLO el titular, nada más
+
+Titular alternativo:`;
+
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{
+                        parts: [{ text: prompt }]
+                    }]
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                console.log('Gemini Title Response:', result); // Debug
+
+                if (response.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    let title = result.candidates[0].content.parts[0].text.trim();
+                    title = title.replace(/^["']|["']$/g, '');
+                    return title;
+                }
+            } catch (error) {
+                console.warn('Error generando título alternativo:', error);
+            }
+            
+            // Fallback: devolver el original
+            return originalTitle;
+        }
+
+        // NUEVO: Extraer keywords más relevantes del título
+        function extractKeywords(title) {
+            // Palabras comunes a eliminar
+            const stopwords = ['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'de', 'del', 'al', 'en', 'con', 'por', 'para', 'su', 'sus', 'que', 'se', 'y', 'o', 'a'];
+            
+            // Limpiar y dividir en palabras
+            const words = title
+                .toLowerCase()
+                .replace(/[^\wáéíóúñ\s]/gi, '')
+                .split(/\s+/)
+                .filter(word => word.length > 3 && !stopwords.includes(word));
+            
+            // Tomar las primeras 5 palabras más importantes
+            return words.slice(0, 5).join(' ');
+        }
+
+        // NUEVO: Buscar imágenes de noticias actuales en Google Images
+        async function searchRelatedImages(query, fullContent = '') {
+            try {
+                // Extraer keywords relevantes
+                const keywords = extractKeywords(query);
+                
+                // Crear query específico para noticias argentinas
+                const newsQuery = `${keywords} argentina noticia`;
+                
+                console.log('🔍 Query original:', query);
+                console.log('🔍 Keywords extraídos:', keywords);
+                console.log('🔍 Búsqueda final:', newsQuery);
+                
+                // Google Custom Search API - Búsqueda de imágenes
+                // Ampliar a último mes (m1) en vez de semana para más resultados
+                const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_SEARCH_API_KEY}&cx=${GOOGLE_SEARCH_ENGINE_ID}&q=${encodeURIComponent(newsQuery)}&searchType=image&num=10&imgSize=large&dateRestrict=m1&imgType=news&safe=off&gl=ar&lr=lang_es`;
+                
+                const response = await fetch(searchUrl);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Error de Google API:', errorData);
+                    throw new Error(errorData.error?.message || 'Error al buscar imágenes');
+                }
+                
+                const data = await response.json();
+                console.log('📷 Imágenes de noticias encontradas:', data.items?.length || 0);
+                
+                if (data.items && data.items.length > 0) {
+                    // Filtrar imágenes muy pequeñas o irrelevantes
+                    const filteredItems = data.items.filter(item => {
+                        const width = item.image?.width || 0;
+                        const height = item.image?.height || 0;
+                        // Solo imágenes razonablemente grandes
+                        return width >= 400 && height >= 300;
+                    });
+                    
+                    console.log('📷 Imágenes filtradas:', filteredItems.length);
+                    
+                    return filteredItems.map((item, index) => ({
+                        url: item.link,
+                        dataUri: item.link,
+                        tipo: index === 0 ? 'principal' : 'noticia',
+                        thumbnail: item.image?.thumbnailLink || item.link,
+                        source: item.displayLink || '',
+                        title: item.title || '',
+                        width: item.image?.width || 0,
+                        height: item.image?.height || 0
+                    }));
+                }
+                
+                return [];
+            } catch (error) {
+                console.error('❌ Error buscando imágenes de noticias:', error);
+                els.status.textContent = `⚠️ Error en búsqueda de imágenes: ${error.message}`;
+                return [];
+            }
+        }
+
+        // NUEVO: Función para mostrar selector de imágenes
+        function displayImageSelector(images) {
+            extractedImages = images || [];
+            
+            if (extractedImages.length === 0) {
+                imageSelectorContainer.style.display = 'none';
+                return;
+            }
+            
+            imageSelectorContainer.style.display = 'block';
+            imageSelectorGrid.innerHTML = '';
+            
+            extractedImages.forEach((imgData, index) => {
+                const item = document.createElement('div');
+                item.className = 'image-selector-item';
+                if (index === 0) item.classList.add('selected');
+                
+                const img = document.createElement('img');
+                img.src = imgData.thumbnail || imgData.dataUri || imgData.url;
+                img.alt = `Imagen ${index + 1}`;
+                
+                const badge = document.createElement('div');
+                badge.className = 'image-type-badge';
+                if (imgData.tipo === 'principal' || imgData.tipo === 'destacada') {
+                    badge.textContent = '⭐';
+                } else if (imgData.tipo === 'noticia') {
+                    badge.textContent = '📰';
+                    badge.title = imgData.source || 'Noticia';
+                } else {
+                    badge.textContent = index + 1;
+                }
+                
+                item.appendChild(img);
+                item.appendChild(badge);
+                
+                item.onclick = () => {
+                    document.querySelectorAll('.image-selector-item').forEach(el => el.classList.remove('selected'));
+                    item.classList.add('selected');
+                    // Usar la URL original (grande) al seleccionar
+                    loadImageFromData(imgData.url || imgData.dataUri);
+                };
+                
+                imageSelectorGrid.appendChild(item);
+            });
+            
+            // Cargar la primera imagen automáticamente
+            if (extractedImages[0]) {
+                loadImageFromData(extractedImages[0].url || extractedImages[0].dataUri);
+            }
+        }
+        
+        // NUEVO: Función para cargar imagen desde data URI o URL
+        function loadImageFromData(src) {
+            const i = new Image();
+            i.onload = () => {
+                userImage = i;
+                const needsFit = shouldUseImageFit(i);
+                els.fitChk.checked = needsFit;
+                if (needsFit) {
+                    els.bgSel.value = 'red-blue-gradient';
+                }
+                redrawCanvas();
+            };
+            i.src = src;
+        }
+
+        // --- FUNCIÓN PARA DETECTAR SI LA IMAGEN SE AJUSTA BIEN AL CANVAS ---
+        function shouldUseImageFit(image) {
+            if (!image) return false;
+            
+            const IMAGE_AREA_HEIGHT = TEMPLATE_HEIGHT * 0.55;
+            const CANVAS_ASPECT_RATIO = TEMPLATE_WIDTH / IMAGE_AREA_HEIGHT;
+            
+            const imageAspectRatio = image.width / image.height;
+            const aspectRatioDifference = Math.abs(imageAspectRatio - CANVAS_ASPECT_RATIO) / CANVAS_ASPECT_RATIO;
+            
+            const THRESHOLD = 0.05;
+            
+            return aspectRatioDifference > THRESHOLD;
+        }
+
+        // --- FUNCIÓN IA CON GEMINI Y GROQ ---
+        async function generateSocialText(silent = false) {
+            if (!articleContent) { 
+                if (!silent) els.sOut.value = "⚠️ Primero extrae una noticia."; 
+                return; 
+            }
+            
+            const selectedModel = els.modelSel ? els.modelSel.value : 'gemini';
+            
+            if (!silent) {
+                els.sLoader.style.display = 'block';
+                els.sOut.value = "⏳ Generando texto directo...";
+            }
+            
+            const systemPrompt = `Actúa como CM de Salta News. Crea un copy para Instagram (max 800 chars) con emojis y gancho sobre esta noticia.
+            IMPORTANTE: Devuelve SOLO el texto del post. NO saludes. NO digas "Aquí tienes". NO uses comillas al principio. Empieza directo con el texto.
+            
+            Noticia: ${articleContent}`;
+            
+            if (selectedModel === 'groq') {
+                return await generateWithGroq(systemPrompt, silent);
+            }
+            
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{
+                        parts: [{ text: systemPrompt }]
+                    }]
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                console.log('Gemini Response:', result); // Debug
+
+                if (response.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    let text = result.candidates[0].content.parts[0].text.trim();
+                    if (text.startsWith('"') && text.endsWith('"')) {
+                        text = text.slice(1, -1);
+                    }
+                    els.sOut.value = text;
+                    if (!silent) {
+                        els.sLoader.style.display = 'none';
+                    }
+                    return;
+                } else {
+                    throw new Error(result.error?.message || 'Error en respuesta de Gemini');
+                }
+            } catch (geminiError) {
+                console.warn('⚠️ Gemini falló:', geminiError);
+                
+                const errorMessage = geminiError.message || '';
+                const isQuotaError = errorMessage.toLowerCase().includes('quota') || 
+                                   errorMessage.toLowerCase().includes('rate limit') ||
+                                   errorMessage.toLowerCase().includes('429') ||
+                                   errorMessage.toLowerCase().includes('resource exhausted');
+                
+                if (isQuotaError && selectedModel === 'gemini') {
+                    console.log('🔄 Cambiando automáticamente a Groq debido a error de cuota');
+                    if (!silent) {
+                        els.sOut.value = "⏳ Gemini alcanzó el límite de cuota. Cambiando a Groq automáticamente...";
+                        els.modelSel.value = 'groq';
+                    }
+                    return await generateWithGroq(systemPrompt, silent);
+                }
+                
+                if (!silent) {
+                    els.sOut.value = `❌ Error con Gemini: ${geminiError.message}\n\n💡 Selecciona "Groq (respaldo)" en el selector de modelo y haz clic en "Generar Texto" de nuevo.`;
+                    els.status.textContent = '⚠️ Gemini falló. Usa Groq para intentar de nuevo.';
+                    // Cambiar automáticamente el selector a Groq
+                    els.modelSel.value = 'groq';
+                    setTimeout(() => {
+                        els.status.textContent = '';
+                    }, 5000);
+                } else {
+                    els.sOut.value = `❌ Error: ${geminiError.message}`;
+                }
+            } finally {
+                if (!silent) {
+                    els.sLoader.style.display = 'none';
+                }
+            }
+        }
+        
+        // Función auxiliar para generar con Groq
+        async function generateWithGroq(systemPrompt, silent = false) {
+            try {
+                if (!silent) {
+                    els.sOut.value = "⏳ Generando con Groq...";
+                }
+                
+                const titulo = userText || 'Noticia de Salta News';
+                const contenidoCompleto = articleContent || '';
+                
+                const promptEnriquecido = `Eres un Community Manager de Salta News, un medio de periodismo de opinión de Salta, Argentina.
+
+Tu tarea es crear un copy formal y profesional para Instagram basado EXACTAMENTE en esta noticia.
+
+CONTENIDO DE LA NOTICIA:
+📰 TÍTULO: ${titulo}
+
+📄 CONTENIDO COMPLETO:
+${contenidoCompleto}
+
+INSTRUCCIONES ESTRICTAS:
+1. RESPETA FIELMENTE el contenido original - NO agregues información que no esté en la noticia
+2. NO inventes datos, cifras, nombres o hechos que no aparezcan en el contenido proporcionado
+3. Usa SOLO la información que está en el título y contenido de arriba
+4. Mantén un tono FORMAL y PERIODÍSTICO
+5. Crea un texto profesional (máximo 800 caracteres)
+6. Usa emojis con abundancia a lo largo del texto: incluye varios emojis relevantes (📰🔥📍💬✨🎯 etc.) que refuercen titulares, datos clave y ganchos, para dar impacto visual y más engagement en Instagram, sin perder el tono profesional
+7. Usa párrafos cortos para mejor legibilidad en Instagram
+8. Al final, agrega EXACTAMENTE 5 hashtags relevantes relacionados con la noticia
+9. Los hashtags deben ser formales y apropiados para un medio de noticias
+
+🇦🇷 LENGUAJE:
+- Usa lenguaje argentino formal y profesional
+- Mantén un tono periodístico serio
+- Usa "vos" cuando corresponda, de forma natural pero formal
+- NO uses modismos informales
+- El vocabulario debe ser argentino pero formal
+
+FORMATO DEL RESULTADO:
+- Texto del post (basado SOLO en la información proporcionada)
+- Al final, 5 hashtags separados por espacios
+- Ejemplo de formato:
+  "Texto del post aquí...
+  
+  #Hashtag1 #Hashtag2 #Hashtag3 #Hashtag4 #Hashtag5"
+
+IMPORTANTE:
+- Devuelve SOLO el texto del post + hashtags
+- NO saludes
+- NO digas "Aquí tienes" ni frases similares
+- NO uses comillas al principio
+- Empieza directo con el texto
+- NO agregues información que no esté en la noticia original
+
+Genera el copy ahora:`;
+                
+                const groqUrl = 'https://api.groq.com/openai/v1/chat/completions';
+                const groqPayload = {
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'Eres un Community Manager argentino experto en crear textos formales y profesionales para redes sociales, especialmente Instagram. Trabajas para Salta News, un medio de periodismo de opinión de Salta, Argentina. Tienes experiencia en periodismo y comunicación digital. CRÍTICO: Siempre respetas fielmente el contenido original de la noticia. NO agregas información, datos, cifras o hechos que no estén en el contenido proporcionado. Usas SOLO la información que te dan. Mantienes un tono formal y periodístico. Usas lenguaje argentino formal y profesional. En cada post usas BASTANTES emojis de forma estratégica (varios por párrafo o por idea) para que el texto sea más atractivo y tenga más gancho en Instagram. Al final de cada texto, incluyes exactamente 5 hashtags relevantes y formales relacionados con la noticia.'
+                        },
+                        {
+                            role: 'user',
+                            content: promptEnriquecido
+                        }
+                    ],
+                    temperature: 0.8,
+                    max_tokens: 600
+                };
+
+                const groqResponse = await fetch(groqUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${GROQ_API_KEY}`
+                    },
+                    body: JSON.stringify(groqPayload)
+                });
+
+                const groqResult = await groqResponse.json();
+
+                if (groqResponse.ok && groqResult.choices?.[0]?.message?.content) {
+                    let text = groqResult.choices[0].message.content.trim();
+                    if (text.startsWith('"') && text.endsWith('"')) {
+                        text = text.slice(1, -1);
+                    }
+                    els.sOut.value = text;
+                    
+                    if (!silent) {
+                        els.status.textContent = '✓ Texto generado con Groq';
+                        setTimeout(() => {
+                            els.status.textContent = '';
+                        }, 3000);
+                    }
+                    
+                    if (!silent) {
+                        els.sLoader.style.display = 'none';
+                    }
+                    return;
+                } else {
+                    throw new Error(groqResult.error?.message || 'Error en respuesta de Groq');
+                }
+            } catch (groqError) {
+                console.error("❌ Error con Groq:", groqError);
+                els.sOut.value = `❌ Error con Groq: ${groqError.message}`;
+                if (!silent) {
+                    els.status.textContent = '❌ Error al generar con Groq';
+                    setTimeout(() => {
+                        els.status.textContent = '';
+                    }, 3000);
+                }
+            } finally {
+                if (!silent) {
+                    els.sLoader.style.display = 'none';
+                }
+            }
+        }
+
+        // --- FUNCIONES VISUALES ---
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, TEMPLATE_WIDTH, TEMPLATE_HEIGHT);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, TEMPLATE_WIDTH, TEMPLATE_HEIGHT);
+            const style = els.styleSel.value;
+
+            if (style === 'clasico') {
+                const h = TEMPLATE_HEIGHT * 0.55;
+                els.fitChk.checked ? drawImageWithBackground(h) : drawImageCover(h);
+                ctx.fillStyle = '#0A246A'; ctx.fillRect(SIDEBAR_OFFSET, h, SIDEBAR_WIDTH, TEMPLATE_HEIGHT - h);
+                ctx.fillStyle = '#D32F2F'; ctx.fillRect(TEMPLATE_WIDTH - SIDEBAR_WIDTH - SIDEBAR_OFFSET, h, SIDEBAR_WIDTH, TEMPLATE_HEIGHT - h);
+                ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, h - 15, TEMPLATE_WIDTH, 16);
+                ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, TEMPLATE_HEIGHT - 200, TEMPLATE_WIDTH, 200);
+                drawCanvasLogo(TEMPLATE_WIDTH / 2, TEMPLATE_HEIGHT - 100, 150, 0.14);
+                drawText('#000000', h + 40, TEMPLATE_HEIGHT - 200 - h - 40);
+            } 
+            else if (style === 'azul') {
+                const h = TEMPLATE_HEIGHT * 0.55;
+                ctx.fillStyle = '#0A246A'; ctx.fillRect(0, h, TEMPLATE_WIDTH, TEMPLATE_HEIGHT - h);
+                els.fitChk.checked ? drawImageWithBackground(h) : drawImageCover(h);
+                ctx.fillStyle = '#0A246A'; ctx.fillRect(0, h - 15, TEMPLATE_WIDTH, 16);
+                ctx.fillStyle = '#D32F2F'; ctx.fillRect(SIDEBAR_OFFSET, h, SIDEBAR_WIDTH, TEMPLATE_HEIGHT - h);
+                drawCanvasLogo(TEMPLATE_WIDTH - 150, 100, 120, 0.14, '#FFFFFF');
+                drawText('#FFFFFF', h + 40, TEMPLATE_HEIGHT - h - 40);
+            }
+            else if (style === 'superposicion') {
+                els.fitChk.checked ? drawImageWithBackground(TEMPLATE_HEIGHT) : drawImageCover(TEMPLATE_HEIGHT);
+                const gradH = TEMPLATE_HEIGHT * 0.5;
+                const g = ctx.createLinearGradient(0, TEMPLATE_HEIGHT - gradH, 0, TEMPLATE_HEIGHT);
+                g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.9)');
+                ctx.fillStyle = g; ctx.fillRect(0, TEMPLATE_HEIGHT - gradH, TEMPLATE_WIDTH, gradH);
+                drawCanvasLogo(150, 100, 120, 0.14, '#FFFFFF');
+                drawText('#FFFFFF', TEMPLATE_HEIGHT - gradH + 60, gradH - 120);
+            }
+            else if (style === 'solo-imagen') {
+                els.fitChk.checked ? drawImageWithBackground(TEMPLATE_HEIGHT) : drawImageCover(TEMPLATE_HEIGHT);
+            }
+        }
+
+        function drawImageCover(h) {
+            if (!userImage) return;
+            const iRatio = userImage.width / userImage.height;
+            const aRatio = TEMPLATE_WIDTH / h;
+            let sw, sh, sx, sy;
+            if (iRatio > aRatio) { sh = userImage.height; sw = userImage.height * aRatio; sx = (userImage.width - sw)/2; sy = 0; }
+            else { sw = userImage.width; sh = userImage.width / aRatio; sy = (userImage.height - sh)/2; sx = 0; }
+            ctx.drawImage(userImage, sx, sy, sw, sh, 0, 0, TEMPLATE_WIDTH, h);
+        }
+
+        function drawImageWithBackground(h) {
+            const bg = els.bgSel.value;
+            if (bg === 'defecto' || bg === 'white') { ctx.fillStyle = '#FFF'; ctx.fillRect(0,0,TEMPLATE_WIDTH,h); }
+            else if (bg === 'black') { ctx.fillStyle = '#000'; ctx.fillRect(0,0,TEMPLATE_WIDTH,h); }
+            else if (bg === 'red-blue-gradient') { const g = ctx.createLinearGradient(0,0,TEMPLATE_WIDTH,0); g.addColorStop(0,'#D32F2F'); g.addColorStop(1,'#0A246A'); ctx.fillStyle = g; ctx.fillRect(0,0,TEMPLATE_WIDTH,h); }
+            else if (bg === 'blurred-image' && userImage) { ctx.save(); ctx.beginPath(); ctx.rect(0,0,TEMPLATE_WIDTH,h); ctx.clip(); ctx.filter='blur(20px) brightness(0.7)'; drawImageCover(h); ctx.restore(); }
+            
+            const st = els.styleSel.value;
+            if (st === 'clasico' || st === 'azul') {
+                ctx.fillStyle = '#0A246A'; ctx.fillRect(SIDEBAR_OFFSET, h, SIDEBAR_WIDTH, TEMPLATE_HEIGHT - h);
+                if (st === 'clasico') { ctx.fillStyle = '#D32F2F'; ctx.fillRect(TEMPLATE_WIDTH - SIDEBAR_WIDTH - SIDEBAR_OFFSET, h, SIDEBAR_WIDTH, TEMPLATE_HEIGHT - h); }
+            }
+
+            if (userImage) {
+                const iRatio = userImage.width / userImage.height;
+                const aRatio = TEMPLATE_WIDTH / h;
+                let rw, rh;
+                if (iRatio > aRatio) { rw = TEMPLATE_WIDTH; rh = rw / iRatio; }
+                else { rh = h; rw = rh * iRatio; }
+                ctx.drawImage(userImage, (TEMPLATE_WIDTH - rw)/2, (h - rh)/2, rw, rh);
+            }
+        }
+
+        function drawCanvasLogo(cx, cy, size, mult = 0.18, color = '#000000') {
+            ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.font = `italic 900 ${size}px 'Montserrat'`;
+            const wS = ctx.measureText('S').width;
+            const wN = ctx.measureText('N').width;
+            const gap = size * 0.15;
+            const totW = wS - gap + wN;
+            let curX = cx - totW / 2;
+            
+            ctx.fillStyle = '#b42727'; ctx.fillText('S', curX + wS/2, cy);
+            curX += wS - gap;
+            ctx.fillStyle = '#2a2972'; ctx.fillText('N', curX + wN/2, cy);
+            
+            ctx.font = `italic 700 ${size * mult}px 'Montserrat'`;
+            ctx.fillStyle = color;
+            ctx.fillText('saltanews.com.ar', cx, cy + size * 0.45);
+            ctx.restore();
+        }
+
+        function drawText(color, y, maxH) {
+            ctx.fillStyle = color; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+            const tx = SIDEBAR_OFFSET + SIDEBAR_WIDTH + 40;
+            const maxW = TEMPLATE_WIDTH - tx * 2;
+            let size = 90;
+            if (els.fontSel.value === 'mediano') size = 72;
+            if (els.fontSel.value === 'pequeno') size = 54;
+            
+            if (els.fontSel.value === 'auto') {
+                while (size > 24) {
+                    ctx.font = `${size}px "Archivo Black"`;
+                    if (getTextHeight(userText.toUpperCase(), size, maxW) <= maxH) break;
+                    size -= 2;
+                }
+            }
+            
+            const h = getTextHeight(userText.toUpperCase(), size, maxW);
+            const lh = size * 1.2;
+            ctx.font = `${size}px "Archivo Black"`;
+            wrapText(userText.toUpperCase(), tx, y + (maxH - h)/2, maxW, lh);
+        }
+
+        function getTextHeight(txt, size, maxW) {
+            ctx.font = `${size}px "Archivo Black"`;
+            const lh = size * 1.2;
+            let h = 0; let line = '';
+            txt.split(' ').forEach(w => {
+                const test = line + (line ? ' ' : '') + w;
+                if (ctx.measureText(test).width > maxW) { h += lh; line = w; }
+                else line = test;
+            });
+            return h + (line ? lh : 0);
+        }
+
+        function wrapText(txt, x, y, maxW, lh) {
+            let line = '';
+            txt.split(' ').forEach(w => {
+                const test = line + (line ? ' ' : '') + w;
+                if (ctx.measureText(test).width > maxW) { ctx.fillText(line, x, y); y += lh; line = w; }
+                else line = test;
+            });
+            if (line) ctx.fillText(line, x, y);
+        }
+
+        // --- EVENTOS ---
+        els.fetchBtn.onclick = async () => {
+            const url = els.urlIn.value.trim();
+            if (!url) return els.status.textContent = '⚠️ Ingresa una URL válida.';
+            
+            // Alternar estilo automáticamente
+            const selectedStyle = STYLES_TO_ALTERNATE[currentStyleIndex];
+            els.styleSel.value = selectedStyle;
+            currentStyleIndex = (currentStyleIndex + 1) % STYLES_TO_ALTERNATE.length;
+            saveStyleIndex(currentStyleIndex);
+            
+            els.loader.style.display = 'block'; 
+            els.fetchBtn.disabled = true;
+            els.status.textContent = 'Extrayendo contenido...';
+            imageSelectorContainer.style.display = 'none';
+            
+            try {
+                const r = await fetch(`${SCRAPER_URL}/wp-json/universal/v1/extract?url=${encodeURIComponent(url)}`);
+                if (!r.ok) {
+                    const errorData = await r.json();
+                    throw new Error(errorData.message || 'Error al extraer datos');
+                }
+                const d = await r.json();
+                
+                // Actualizar UI con método usado
+                if (d.metodo) {
+                    els.status.textContent = `✓ Extraído con: ${d.metodo}`;
+                }
+                
+                if (d.contenido) { 
+                    articleContent = d.contenido;
+                }
+                
+                // NUEVO: Guardar título original y generar alternativo
+                if (d.titulo) {
+                    tituloOriginal = d.titulo;
+                    els.status.textContent += ' | Generando titular...';
+                    
+                    const alternativeTitle = await generateAlternativeTitle(d.titulo, d.contenido || d.excerpt || '');
+                    els.txtIn.value = alternativeTitle;
+                    userText = alternativeTitle;
+                    els.regenTitleBtn.disabled = false;
+                    
+                    console.log('Título original:', tituloOriginal);
+                    console.log('Título alternativo:', alternativeTitle);
+                }
+                
+                // NUEVO: Buscar imágenes de noticias actuales en Google
+                els.status.textContent += ' | Buscando imágenes de noticias...';
+                const relatedImages = await searchRelatedImages(d.titulo || '', d.contenido || '');
+                
+                if (relatedImages && relatedImages.length > 0) {
+                    displayImageSelector(relatedImages);
+                    els.status.textContent = `✓ ${relatedImages.length} imágenes de noticias encontradas`;
+                } else {
+                    // Fallback: usar imágenes del post original si Google no devuelve resultados
+                    if (d.imagenes && d.imagenes.length > 0) {
+                        displayImageSelector(d.imagenes);
+                        els.status.textContent = `✓ ${d.imagenes.length} imágenes del post`;
+                    } else if (d.imagenDataUri) {
+                        loadImageFromData(d.imagenDataUri);
+                        els.status.textContent = '✓ 1 imagen cargada';
+                    } else {
+                        els.status.textContent = '⚠️ No se encontraron imágenes';
+                    }
+                }
+                
+                redrawCanvas();
+            } catch (e) { 
+                console.error(e); 
+                els.status.textContent = '❌ ' + e.message; 
+            } finally { 
+                els.loader.style.display = 'none'; 
+                els.fetchBtn.disabled = false;
+            }
+        };
+
+        els.genBtn.onclick = () => generateSocialText(false);
+        
+        // NUEVO: Botón Regenerar Título con Gemini
+        els.regenTitleBtn.onclick = async () => {
+            if (!tituloOriginal || !articleContent) {
+                els.status.textContent = "⚠️ Primero extrae una noticia.";
+                return;
+            }
+            
+            els.loader.style.display = 'block';
+            els.regenTitleBtn.disabled = true;
+            els.status.textContent = '🔄 Regenerando título...';
+            
+            const newTitle = await generateAlternativeTitle(tituloOriginal, articleContent);
+            els.txtIn.value = newTitle;
+            userText = newTitle;
+            redrawCanvas();
+            
+            els.loader.style.display = 'none';
+            els.regenTitleBtn.disabled = false;
+            els.status.textContent = '✓ Título regenerado';
+            setTimeout(() => {
+                els.status.textContent = '';
+            }, 2000);
+        };
+
+        els.imgIn.onchange = (e) => {
+            if (e.target.files[0]) {
+                const r = new FileReader();
+                r.onload = (ev) => loadImageFromData(ev.target.result);
+                r.readAsDataURL(e.target.files[0]);
+            }
+        };
+        
+        [els.fitChk, els.bgSel, els.styleSel, els.fontSel].forEach(el => el.onchange = () => { updateControlsVisibility(); redrawCanvas(); });
+        els.txtIn.oninput = (e) => { userText = e.target.value || "TITULAR"; redrawCanvas(); };
+        els.dlBtn.onclick = () => { const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = 'placa-universal.png'; a.click(); };
+        
+        els.pasteBtn.onclick = async () => { try { els.urlIn.value = await navigator.clipboard.readText(); } catch {} };
+        els.clearBtn.onclick = () => els.urlIn.value = '';
+        
+        // Botón Compartir
+        els.shareBtn.onclick = async () => {
+            const textToShare = els.sOut.value.trim();
+            
+            if (!textToShare) {
+                alert("No hay texto para compartir. Genera primero el texto por IA.");
+                return;
+            }
+            
+            try {
+                await navigator.clipboard.writeText(textToShare);
+            } catch (err) {
+                try {
+                    els.sOut.select();
+                    document.execCommand('copy');
+                } catch (fallbackErr) {
+                    console.error('Error al copiar texto:', fallbackErr);
+                }
+            }
+            
+            canvas.toBlob(async (blob) => {
+                if (!blob) {
+                    alert("Error al generar la imagen.");
+                    return;
+                }
+                
+                const file = new File([blob], 'placa-universal.png', { type: 'image/png' });
+                
+                if (navigator.share) {
+                    try {
+                        const canShareFiles = navigator.canShare ? navigator.canShare({ files: [file] }) : true;
+                        
+                        if (canShareFiles) {
+                            await navigator.share({
+                                files: [file],
+                                text: textToShare,
+                                title: 'Placa Salta News'
+                            });
+                            
+                            const originalText = els.shareBtn.textContent;
+                            els.shareBtn.textContent = "✓ Compartido!";
+                            setTimeout(() => {
+                                els.shareBtn.textContent = originalText;
+                            }, 2000);
+                        } else {
+                            tryAlternativeShare(blob, textToShare);
+                        }
+                    } catch (shareError) {
+                        if (shareError.name !== 'AbortError') {
+                            console.error('Error al compartir:', shareError);
+                            tryAlternativeShare(blob, textToShare);
+                        } else {
+                            const originalText = els.shareBtn.textContent;
+                            els.shareBtn.textContent = "✓ Texto copiado";
+                            setTimeout(() => {
+                                els.shareBtn.textContent = originalText;
+                            }, 2000);
+                        }
+                    }
+                } else {
+                    tryAlternativeShare(blob, textToShare);
+                }
+            }, 'image/png');
+        };
+        
+        function tryAlternativeShare(blob, text) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'placa-universal.png';
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            const originalText = els.shareBtn.textContent;
+            els.shareBtn.textContent = "✓ Imagen descargada";
+            setTimeout(() => {
+                els.shareBtn.textContent = originalText;
+            }, 2000);
+            
+            alert("Imagen descargada y texto copiado. Abre Instagram y comparte la imagen. El texto ya está en tu portapapeles.");
+        }
+
+        function updateControlsVisibility() {
+            const s = els.styleSel.value;
+            const v = s !== 'solo-imagen';
+            els.ctrlTxt.style.display = v ? 'block' : 'none';
+            els.sectSoc.style.display = v ? 'block' : 'none';
+            els.ctrlImg.style.display = 'block';
+            els.ctrlFit.style.display = 'block';
+        }
+    });
+    </script>
+</body>
+</html>

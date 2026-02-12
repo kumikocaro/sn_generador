@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Temporales
+tmp/
+temp/
+
+# Binario ffmpeg portable (muy pesado para GitHub; en Render se usa el del sistema/Docker)
+/ffmpeg
+
+# App Android (Capacitor)
+android-app/node_modules/
+android-app/android/
+android-app/.capacitor/
+*.apk
+*.aab

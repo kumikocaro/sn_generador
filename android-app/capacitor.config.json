@@ -1,0 +1,11 @@
+{
+  "appId": "com.saltanews.videos",
+  "appName": "Videos SN",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
