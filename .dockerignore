@@ -1,0 +1,15 @@
+# No enviar esto al build de Docker (acelera y evita errores)
+.git
+.gitignore
+*.md
+android-app
+.DS_Store
+__pycache__
+*.pyc
+.env
+*.log
+tmp
+temp
+.cursor
+.vscode
+.idea
