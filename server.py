@@ -7,6 +7,7 @@ Descarga videos de Instagram usando yt-dlp
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 import subprocess
+import sys
 import json
 import os
 import tempfile
@@ -77,24 +78,23 @@ def download_instagram():
         with tempfile.TemporaryDirectory() as temp_dir:
             output_file = os.path.join(temp_dir, f'instagram_{shortcode}.mp4')
             
-            # Buscar yt-dlp en múltiples ubicaciones
-            ytdlp_paths = [
-                'yt-dlp',  # En PATH
-                '/Users/macbookair/Library/Python/3.9/bin/yt-dlp',  # Instalación --user
-                os.path.expanduser('~/Library/Python/3.9/bin/yt-dlp'),  # Expandido
-                '/usr/local/bin/yt-dlp'  # Instalación global
-            ]
-            
-            ytdlp_cmd = 'yt-dlp'
-            for path in ytdlp_paths:
-                if os.path.exists(path) or subprocess.run(['which', path], capture_output=True).returncode == 0:
-                    ytdlp_cmd = path
+            # Buscar yt-dlp: PATH, Mac, o python -m yt_dlp (Termux/Android)
+            ytdlp_base = ['yt-dlp']
+            for candidate in ['yt-dlp', '/usr/local/bin/yt-dlp', os.path.expanduser('~/Library/Python/3.9/bin/yt-dlp')]:
+                if subprocess.run(['which', candidate], capture_output=True).returncode == 0 or (os.path.exists(candidate) and os.access(candidate, os.X_OK)):
+                    ytdlp_base = [candidate]
                     break
+            else:
+                try:
+                    r = subprocess.run([sys.executable, '-m', 'yt_dlp', '--version'], capture_output=True, text=True, timeout=5)
+                    if r.returncode == 0:
+                        ytdlp_base = [sys.executable, '-m', 'yt_dlp']
+                except Exception:
+                    pass
             
             # Primero extraer metadatos del video
             print(f"🌐 Extrayendo metadatos: {instagram_url}")
-            metadata_command = [
-                ytdlp_cmd,
+            metadata_command = ytdlp_base + [
                 '--dump-json',
                 '--no-warnings',
                 '--no-check-certificate',
@@ -112,8 +112,7 @@ def download_instagram():
                     print("⚠️ No se pudieron parsear los metadatos")
             
             # Ejecutar yt-dlp para descargar el video
-            command = [
-                ytdlp_cmd,
+            command = ytdlp_base + [
                 '-f', 'best[ext=mp4]',
                 '--no-warnings',
                 '--no-check-certificate',
