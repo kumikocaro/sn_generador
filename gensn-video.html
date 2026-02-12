@@ -385,6 +385,8 @@
 
         // API Key de Gemini (misma que en gensn.html)
         const GEMINI_API_KEY = 'AIzaSyBim_waPtFzRlLFgOeDd9_gyWhNzM6Euqw';
+        // Groq (opcional): si ponés tu clave, cuando Gemini llega al límite usa Groq
+        const GROQ_API_KEY = '';
         
         // Base URL del backend (app Android / PWA: poner la URL de tu servidor desplegado)
         function getApiBase() {
@@ -1205,8 +1207,11 @@ IMPORTANTE:
                 }
             } catch (error) {
                 console.error('❌ Error en auto-generación:', error);
-                // No mostrar error al usuario, ya que es automático
-                // Solo loguear en consola
+                const msg = (error.message || '').toLowerCase();
+                if (msg.includes('quota') || msg.includes('exceeded')) {
+                    els.status.className = 'status error';
+                    els.status.textContent = '⚠️ Límite de Gemini. En ~1 min tocá "Generar Título y Texto" o escribí a mano.';
+                }
             }
         }
 
@@ -1302,9 +1307,43 @@ IMPORTANTE:
                     throw new Error(result.error?.message || 'Error generando contenido');
                 }
             } catch (error) {
-                console.error('Error generando con IA:', error);
-                els.status.className = 'status error';
-                els.status.textContent = '❌ Error: ' + error.message;
+                const msg = (error.message || '').toLowerCase();
+                const isQuota = msg.includes('quota') || msg.includes('exceeded') || msg.includes('retry in');
+                if (isQuota && GROQ_API_KEY) {
+                    els.status.textContent = '⏳ Gemini al límite, probando con Groq...';
+                    try {
+                        const prompt = `Actúa como creador de contenido para redes. Genera TÍTULO y COPY para Instagram.
+Descripción del video: ${videoDescription}
+FORMATO ESTRICTO: TÍTULO: [corto, mayúsculas, máx 5 palabras] luego TEXTO: [copy breve, máx 300 caracteres, emojis, 5 hashtags al final]. Responde solo con "TÍTULO:" y "TEXTO:" sin saludos.`;
+                        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_API_KEY },
+                            body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 400 })
+                        });
+                        const groqJson = await groqRes.json();
+                        if (groqRes.ok && groqJson.choices?.[0]?.message?.content) {
+                            let generatedContent = groqJson.choices[0].message.content.trim();
+                            const titleMatch = generatedContent.match(/TÍTULO:\s*(.+?)(?=TEXTO:|$)/s);
+                            const textMatch = generatedContent.match(/TEXTO:\s*(.+)$/s);
+                            if (titleMatch && textMatch) {
+                                els.titleInput.value = titleMatch[1].trim().replace(/^["']|["']$/g, '').replace(/\n.*/g, '');
+                                els.textOutput.value = textMatch[1].trim().replace(/^["']|["']$/g, '');
+                                els.regenerateTextBtn.style.display = 'block';
+                                els.status.className = 'status success';
+                                els.status.textContent = '✅ Generado con Groq (Gemini al límite)';
+                            } else { throw new Error('Formato Groq'); }
+                        } else { throw new Error(groqJson.error?.message || 'Groq error'); }
+                    } catch (groqErr) {
+                        els.status.className = 'status error';
+                        els.status.textContent = '❌ Límite de Gemini. Esperá ~1 minuto y tocá Regenerar, o escribí el título y texto a mano.';
+                    }
+                } else if (isQuota) {
+                    els.status.className = 'status error';
+                    els.status.textContent = '❌ Límite de Gemini por ahora. Esperá ~1 minuto y tocá Regenerar, o escribí el título y texto a mano.';
+                } else {
+                    els.status.className = 'status error';
+                    els.status.textContent = '❌ Error: ' + error.message;
+                }
             } finally {
                 els.generateTextBtn.disabled = false;
             }
