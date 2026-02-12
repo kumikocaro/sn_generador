@@ -8,6 +8,7 @@ from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 import subprocess
 import sys
+import shutil
 import json
 import os
 import tempfile
@@ -78,10 +79,10 @@ def download_instagram():
         with tempfile.TemporaryDirectory() as temp_dir:
             output_file = os.path.join(temp_dir, f'instagram_{shortcode}.mp4')
             
-            # Buscar yt-dlp: PATH, Mac, o python -m yt_dlp (Termux/Android)
+            # Buscar yt-dlp: PATH, Mac, o python -m yt_dlp (Termux/Android). Sin usar "which" (no existe en Termux).
             ytdlp_base = ['yt-dlp']
             for candidate in ['yt-dlp', '/usr/local/bin/yt-dlp', os.path.expanduser('~/Library/Python/3.9/bin/yt-dlp')]:
-                if subprocess.run(['which', candidate], capture_output=True).returncode == 0 or (os.path.exists(candidate) and os.access(candidate, os.X_OK)):
+                if shutil.which(candidate) or (os.path.exists(candidate) and os.access(candidate, os.X_OK)):
                     ytdlp_base = [candidate]
                     break
             else:
@@ -516,7 +517,7 @@ if __name__ == '__main__':
     ytdlp_found = False
     for candidate in ['yt-dlp', '/usr/local/bin/yt-dlp', os.path.expanduser('~/Library/Python/3.9/bin/yt-dlp')]:
         try:
-            if subprocess.run(['which', candidate], capture_output=True).returncode == 0 or (os.path.exists(candidate) and os.access(candidate, os.X_OK)):
+            if shutil.which(candidate) or (os.path.exists(candidate) and os.access(candidate, os.X_OK)):
                 subprocess.run([candidate, '--version'], capture_output=True, check=True)
                 print(f"✅ yt-dlp encontrado: {candidate}")
                 ytdlp_found = True
