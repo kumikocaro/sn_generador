@@ -1567,34 +1567,38 @@ FORMATO ESTRICTO: TÍTULO: [corto, mayúsculas, máx 5 palabras] luego TEXTO: [c
             }
         }
 
+        // Mismo logo que en la portada: SN 120px + saltanews.com.ar, misma posición visual
         function createWatermark() {
             const canvas = document.createElement('canvas');
-            canvas.width = 200;
-            canvas.height = 100;
+            canvas.width = 260;
+            canvas.height = 170;
             const ctx = canvas.getContext('2d');
-            
-            ctx.font = `italic 900 60px 'Montserrat'`;
+            // Mismo bloque que la portada: SN 120px + texto abajo (centro 130, SN en y=60, url en y=114)
+            const centerX = canvas.width / 2;
+            ctx.font = `italic 900 120px 'Montserrat'`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            
             const wS = ctx.measureText('S').width;
             const wN = ctx.measureText('N').width;
-            const gap = 60 * 0.15;
+            const gap = 120 * 0.15;
             const totW = wS - gap + wN;
-            let curX = canvas.width / 2 - totW / 2;
-            
-            // Sombra
-            ctx.shadowColor = 'rgba(0,0,0,0.8)';
-            ctx.shadowBlur = 4;
+            let curX = centerX - totW / 2;
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 8;
             ctx.shadowOffsetX = 2;
             ctx.shadowOffsetY = 2;
-            
             ctx.fillStyle = '#b42727';
-            ctx.fillText('S', curX + wS/2, canvas.height / 2);
+            ctx.fillText('S', curX + wS/2, 60);
             curX += wS - gap;
             ctx.fillStyle = '#2a2972';
-            ctx.fillText('N', curX + wN/2, canvas.height / 2);
-            
+            ctx.fillText('N', curX + wN/2, 60);
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            ctx.font = `italic 700 ${120 * 0.14}px 'Montserrat'`;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('saltanews.com.ar', centerX, 60 + 120 * 0.45);
             return canvas;
         }
 

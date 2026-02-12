@@ -212,90 +212,65 @@ def find_ffmpeg():
     return None
 
 def create_watermark_image(output_path):
-    """Crea imagen PNG del logo SN EXACTO como en gensn-video.html"""
-    # Crear imagen transparente (200x100 como en el frontend)
-    img = Image.new('RGBA', (200, 100), (0, 0, 0, 0))
+    """Logo SN + saltanews.com.ar, mismo tamaño/estilo que la portada (260x170)"""
+    img = Image.new('RGBA', (260, 170), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    
-    # Buscar fuente Montserrat o similar bold/black italic
-    font_size = 60  # Igual que en el frontend
+    font_size = 120
     font = None
-    
-    # Buscar Montserrat primero
     montserrat_paths = [
         '/System/Library/Fonts/Supplemental/Montserrat-BlackItalic.ttf',
         '/System/Library/Fonts/Supplemental/Montserrat-BoldItalic.ttf',
         '/Library/Fonts/Montserrat-BlackItalic.ttf',
         '/Users/macbookair/Library/Fonts/Montserrat-BlackItalic.ttf',
     ]
-    
     for font_path in montserrat_paths:
         try:
             if os.path.exists(font_path):
                 font = ImageFont.truetype(font_path, font_size)
                 break
-        except:
+        except Exception:
             continue
-    
-    # Si no hay Montserrat, usar Arial Bold Italic como fallback
     if not font:
-        arial_paths = [
-            '/System/Library/Fonts/Supplemental/Arial Bold Italic.ttf',
-            '/System/Library/Fonts/Supplemental/Arial.ttf',
-        ]
-        for font_path in arial_paths:
+        for fp in ['/System/Library/Fonts/Supplemental/Arial Bold Italic.ttf', '/System/Library/Fonts/Supplemental/Arial.ttf']:
             try:
-                if os.path.exists(font_path):
-                    font = ImageFont.truetype(font_path, font_size)
+                if os.path.exists(fp):
+                    font = ImageFont.truetype(fp, font_size)
                     break
-            except:
+            except Exception:
                 continue
-    
     if not font:
         font = ImageFont.load_default()
-    
-    # Medir texto (igual que en el frontend)
+    small_size = max(14, int(120 * 0.14))
+    font_small = font  # mismo font en tamaño pequeño si no hay otro
+    for font_path in montserrat_paths:
+        try:
+            if os.path.exists(font_path):
+                font_small = ImageFont.truetype(font_path, small_size)
+                break
+        except Exception:
+            continue
     s_bbox = draw.textbbox((0, 0), 'S', font=font)
     wS = s_bbox[2] - s_bbox[0]
-    
     n_bbox = draw.textbbox((0, 0), 'N', font=font)
     wN = n_bbox[2] - n_bbox[0]
-    
-    # Gap igual que frontend: 60 * 0.15 = 9
     gap = font_size * 0.15
     totW = wS - gap + wN
-    
-    # Centrar
     curX = (img.width - totW) / 2
-    centerY = img.height / 2
-    
-    # Sombra (igual que frontend: rgba(0,0,0,0.8), blur 4, offset 2,2)
-    # En PIL simulamos sombra con múltiples capas
-    shadow_color = (0, 0, 0, 204)  # rgba(0,0,0,0.8) = 255*0.8 = 204
+    centerY = 60
+    shadow_color = (0, 0, 0, 128)
     shadow_offset = 2
-    
-    # Dibujar "S" con sombra primero
-    s_x = curX + wS/2
-    # Sombra (múltiples capas para simular blur)
+    s_x = curX + wS / 2
     for i in range(3):
-        offset = shadow_offset + i
-        draw.text((s_x + offset, centerY + offset), 'S', fill=shadow_color, font=font, anchor='mm')
-    # Texto principal rojo (#b42727)
+        o = shadow_offset + i
+        draw.text((s_x + o, centerY + o), 'S', fill=shadow_color, font=font, anchor='mm')
     draw.text((s_x, centerY), 'S', fill=(180, 39, 39, 255), font=font, anchor='mm')
-    
-    # Mover posición para "N"
     curX += wS - gap
-    
-    # Dibujar "N" con sombra
-    n_x = curX + wN/2
-    # Sombra
+    n_x = curX + wN / 2
     for i in range(3):
-        offset = shadow_offset + i
-        draw.text((n_x + offset, centerY + offset), 'N', fill=shadow_color, font=font, anchor='mm')
-    # Texto principal azul (#2a2972)
+        o = shadow_offset + i
+        draw.text((n_x + o, centerY + o), 'N', fill=shadow_color, font=font, anchor='mm')
     draw.text((n_x, centerY), 'N', fill=(42, 41, 114, 255), font=font, anchor='mm')
-    
-    # Guardar como PNG
+    draw.text((img.width / 2, centerY + int(120 * 0.45)), 'saltanews.com.ar', fill=(255, 255, 255, 255), font=font_small, anchor='mm')
     img.save(output_path, 'PNG')
     return output_path
 
@@ -373,42 +348,37 @@ def process_video():
                     # Escalar video original a 1080x1920 y agregar marca de agua
                     watermarked_video_path = os.path.join(temp_dir, 'watermarked.mp4')
                     
-                    # Escalar video, escalar logo para que se vea bien, overlay, y COPIAR AUDIO
-                    # Logo 200x100 -> escalar a ~360px ancho para que se vea nítido en 1080p
-                    # -map '[v]' = salida del filter_complex, -map 0:a = audio del input 0
+                    # Logo = mismo tamaño y posición que en la portada (sin escalar; viene del frontend)
+                    # Audio = reencodear a AAC 44.1k para que concat con la portada no genere ruidos
                     result = subprocess.run([
                         ffmpeg_cmd, '-y', '-i', video_path, '-i', watermark_path,
                         '-filter_complex',
                         '[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[v0];'
-                        '[1:v]scale=360:-1,format=rgba[w];'
-                        '[v0][w]overlay=W-w-40:40:format=auto[vout]',
+                        '[1:v]format=rgba[w];'
+                        '[v0][w]overlay=W-w-20:40:format=auto[vout]',
                         '-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-pix_fmt', 'yuv420p',
-                        '-c:a', 'copy',
+                        '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
                         '-map', '[vout]', '-map', '0:a?',
                         watermarked_video_path
                     ], capture_output=True, text=True)
-                    
-                    # -map 0:a? no existe en ffmpeg; si no hay audio falla. Intentar sin ? y si falla, sin audio
                     if result.returncode != 0:
                         result = subprocess.run([
                             ffmpeg_cmd, '-y', '-i', video_path, '-i', watermark_path,
                             '-filter_complex',
                             '[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[v0];'
-                            '[1:v]scale=360:-1,format=rgba[w];'
-                            '[v0][w]overlay=W-w-40:40:format=auto[vout]',
+                            '[1:v]format=rgba[w];'
+                            '[v0][w]overlay=W-w-20:40:format=auto[vout]',
                             '-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-pix_fmt', 'yuv420p',
-                            '-map', '[vout]', '-map', '0:a',
+                            '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-map', '[vout]', '-map', '0:a',
                             watermarked_video_path
                         ], capture_output=True, text=True)
-                    
                     if result.returncode != 0:
-                        print(f"Con audio falló: {result.stderr}")
                         result = subprocess.run([
                             ffmpeg_cmd, '-y', '-i', video_path, '-i', watermark_path,
                             '-filter_complex',
                             '[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[v0];'
-                            '[1:v]scale=360:-1,format=rgba[w];'
-                            '[v0][w]overlay=W-w-40:40:format=auto[vout]',
+                            '[1:v]format=rgba[w];'
+                            '[v0][w]overlay=W-w-20:40:format=auto[vout]',
                             '-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-pix_fmt', 'yuv420p',
                             '-map', '[vout]', '-an',
                             watermarked_video_path
@@ -464,7 +434,7 @@ def process_video():
                             with open(output_path, 'rb') as f:
                                 output_data = f.read()
             else:
-                # Sin portada, solo escalar video y agregar marca de agua
+                # Sin portada: escalar video, logo mismo que portada (W-w-20:40), audio AAC
                 watermark_path = os.path.join(temp_dir, 'watermark.png')
                 if watermark_image_data:
                     wm_bytes = base64.b64decode(watermark_image_data.split(',')[1] if ',' in watermark_image_data else watermark_image_data)
@@ -472,21 +442,21 @@ def process_video():
                         f.write(wm_bytes)
                 else:
                     create_watermark_image(watermark_path)
-                
                 result = subprocess.run([
                     ffmpeg_cmd, '-y', '-i', video_path, '-i', watermark_path,
-                    '-filter_complex', '[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[v];[v][1:v]overlay=W-w-30:30',
+                    '-filter_complex',
+                    '[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[v0];[1:v]format=rgba[w];[v0][w]overlay=W-w-20:40:format=auto[vout]',
                     '-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-pix_fmt', 'yuv420p',
-                    '-c:a', 'copy', '-map', '0:v', '-map', '0:a',
+                    '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-map', '[vout]', '-map', '0:a?',
                     output_path
                 ], capture_output=True, text=True)
-                
                 if result.returncode != 0:
                     result = subprocess.run([
                         ffmpeg_cmd, '-y', '-i', video_path, '-i', watermark_path,
-                        '-filter_complex', '[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[v];[v][1:v]overlay=W-w-30:30',
+                        '-filter_complex',
+                        '[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[v0];[1:v]format=rgba[w];[v0][w]overlay=W-w-20:40:format=auto[vout]',
                         '-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-pix_fmt', 'yuv420p',
-                        '-an', output_path
+                        '-map', '[vout]', '-an', output_path
                     ], capture_output=True, text=True)
                 
                 if result.returncode != 0:
