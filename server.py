@@ -512,28 +512,28 @@ def process_video():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    # Verificar que yt-dlp está instalado
+    # Verificar que yt-dlp está instalado (binario en PATH/Mac o como módulo en Termux)
     ytdlp_found = False
-    ytdlp_paths = [
-        'yt-dlp',
-        '/Users/macbookair/Library/Python/3.9/bin/yt-dlp',
-        os.path.expanduser('~/Library/Python/3.9/bin/yt-dlp'),
-        '/usr/local/bin/yt-dlp'
-    ]
-    
-    for path in ytdlp_paths:
+    for candidate in ['yt-dlp', '/usr/local/bin/yt-dlp', os.path.expanduser('~/Library/Python/3.9/bin/yt-dlp')]:
         try:
-            if os.path.exists(path):
-                subprocess.run([path, '--version'], capture_output=True, check=True)
-                print(f"✅ yt-dlp encontrado en: {path}")
+            if subprocess.run(['which', candidate], capture_output=True).returncode == 0 or (os.path.exists(candidate) and os.access(candidate, os.X_OK)):
+                subprocess.run([candidate, '--version'], capture_output=True, check=True)
+                print(f"✅ yt-dlp encontrado: {candidate}")
                 ytdlp_found = True
                 break
-        except:
+        except Exception:
             continue
-    
+    if not ytdlp_found:
+        try:
+            r = subprocess.run([sys.executable, '-m', 'yt_dlp', '--version'], capture_output=True, text=True, timeout=5)
+            if r.returncode == 0:
+                print("✅ yt-dlp encontrado (python -m yt_dlp)")
+                ytdlp_found = True
+        except Exception:
+            pass
     if not ytdlp_found:
         print("❌ ERROR: yt-dlp no está instalado")
-        print("📦 Instalá con: pip3 install --user yt-dlp")
+        print("📦 Instalá con: pip install yt-dlp   (o pip3 install yt-dlp)")
         exit(1)
     
     # Obtener puerto de variable de entorno (para Render) o usar 8000 (local)
