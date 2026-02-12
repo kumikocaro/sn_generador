@@ -120,10 +120,10 @@ def download_instagram():
             result = subprocess.run(command, capture_output=True, text=True, timeout=60)
             
             if result.returncode != 0:
-                error_msg = result.stderr or result.stdout
+                error_msg = (result.stderr or result.stdout or '')[:500]
                 print(f"❌ Error yt-dlp: {error_msg}")
                 return jsonify({
-                    'error': 'No se pudo descargar el video',
+                    'error': 'No se pudo descargar desde Instagram. En servidores en la nube Instagram suele bloquear. Probá subir el video manualmente abajo.',
                     'debug': error_msg
                 }), 500
             

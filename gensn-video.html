@@ -855,8 +855,14 @@
                         }
                     } else {
                         const errorText = await proxyResponse.text();
-                        lastError = `Proxy: Error ${proxyResponse.status}`;
-                        console.log('❌ Proxy HTTP error:', proxyResponse.status, errorText.substring(0, 100));
+                        try {
+                            const errJson = JSON.parse(errorText);
+                            lastError = errJson.error || `Error ${proxyResponse.status}`;
+                            if (errJson.debug) lastError += ' (' + (typeof errJson.debug === 'string' ? errJson.debug.substring(0, 80) : String(errJson.debug).substring(0, 80)) + ')';
+                        } catch (_) {
+                            lastError = `Proxy: Error ${proxyResponse.status}`;
+                        }
+                        console.log('❌ Proxy HTTP error:', proxyResponse.status, errorText.substring(0, 200));
                     }
                 } catch (e) {
                     lastError = `Proxy: ${e.message}`;
