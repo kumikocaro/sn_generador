@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generador de Videos SN</title>
+    <meta name="sn-version" content="placa-2025">
     
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#0A246A">
@@ -275,6 +276,7 @@
                 <div class="logo-sn-url">saltanews.com.ar</div>
             </div>
             <h1>Generador de Videos SN</h1>
+            <p style="margin: 0 0 12px 0; font-size: 0.85rem; color: #0A246A; font-weight: bold;">✓ Versión con opción placa (solo inicio / todo el video)</p>
             
             <label>URL del Video de Instagram:</label>
             <div style="display: flex; gap: 5px; align-items: center;">
@@ -286,6 +288,21 @@
             
             <label>O sube un video:</label>
             <input type="file" id="video-input" accept="video/*">
+            
+            <!-- PLACA: recuadro azul con borde rojo, justo debajo de "O sube un video". Si no lo ves, actualizá con git pull en Termux. -->
+            <div id="opcion-placa" style="margin: 20px 0; padding: 16px; background: #0A246A; border: 3px solid #D32F2F; border-radius: 12px;">
+                <h4 style="margin: 0 0 12px 0; color: #fff; font-size: 1.15rem;">¿Placa solo al inicio o todo el video?</h4>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label class="placa-option" style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px; background: #fff; border-radius: 8px; border: 2px solid #0A246A; margin: 0;">
+                        <input type="radio" name="placa-mode" id="placa-solo-inicio" value="0" checked style="width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0;">
+                        <span><strong>Solo al inicio (1 s)</strong> — Portada 1 segundo, después solo el video con el logo.</span>
+                    </label>
+                    <label class="placa-option" style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px; background: #e0e0e0; border-radius: 8px; border: 2px solid transparent; margin: 0;">
+                        <input type="radio" name="placa-mode" id="placa-permanente" value="1" style="width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0;">
+                        <span><strong>Durante todo el video</strong> — La franja de abajo de la portada queda fija y tapa textos todo el reel.</span>
+                    </label>
+                </div>
+            </div>
             
             <div style="border-top: 1px solid #eee; margin-top: 20px; padding-top: 20px;">
                 <h3 style="margin-top: 0;">Configuración de la Portada</h3>
@@ -326,6 +343,27 @@
                 
                 <label style="margin-top: 15px;">Título para la portada:</label>
                 <input type="text" id="title-input" placeholder="Escribe el título o genera con IA abajo...">
+                
+                <div style="border-top: 1px solid #eee; margin-top: 20px; padding-top: 20px;">
+                    <label style="margin-top: 15px;">Zoom del video (%):</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="range" id="video-zoom" min="50" max="200" step="5" value="100" style="flex: 1;">
+                        <span id="video-zoom-value" style="min-width: 50px; font-weight: bold;">100%</span>
+                    </div>
+                    <label style="margin-top: 15px;">Posición del video (para tapar textos):</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label style="font-size: 0.9em; color: #666;">Posición X:</label>
+                            <input type="range" id="video-pos-x" min="-400" max="400" step="20" value="0" style="width: 100%;">
+                            <span id="video-pos-x-value" style="font-size: 0.85em; font-weight: bold;">0</span>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.9em; color: #666;">Posición Y:</label>
+                            <input type="range" id="video-pos-y" min="-400" max="400" step="20" value="0" style="width: 100%;">
+                            <span id="video-pos-y-value" style="font-size: 0.85em; font-weight: bold;">0</span>
+                        </div>
+                    </div>
+                </div>
                 
                 <h3 style="margin-top: 20px;">Generar Título y Texto con IA</h3>
                 
@@ -416,6 +454,13 @@
             imageZoomValue: document.getElementById('image-zoom-value'),
             imageEffect: document.getElementById('image-effect'),
             titleInput: document.getElementById('title-input'),
+            placaPermanente: document.getElementById('placa-permanente'),
+            videoZoom: document.getElementById('video-zoom'),
+            videoZoomValue: document.getElementById('video-zoom-value'),
+            videoPosX: document.getElementById('video-pos-x'),
+            videoPosXValue: document.getElementById('video-pos-x-value'),
+            videoPosY: document.getElementById('video-pos-y'),
+            videoPosYValue: document.getElementById('video-pos-y-value'),
             textOutput: document.getElementById('text-output'),
             copyTextBtn: document.getElementById('copy-text-btn'),
             processBtn: document.getElementById('process-btn'),
@@ -1083,6 +1128,38 @@
             });
         }
 
+        if (els.videoZoom) {
+            els.videoZoom.addEventListener('input', (e) => {
+                if (els.videoZoomValue) els.videoZoomValue.textContent = e.target.value + '%';
+            });
+        }
+        if (els.videoPosX) {
+            els.videoPosX.addEventListener('input', (e) => {
+                if (els.videoPosXValue) els.videoPosXValue.textContent = e.target.value;
+            });
+        }
+        if (els.videoPosY) {
+            els.videoPosY.addEventListener('input', (e) => {
+                if (els.videoPosYValue) els.videoPosYValue.textContent = e.target.value;
+            });
+        }
+
+        function updatePlacaOptionStyle() {
+            const soloInicio = document.getElementById('placa-solo-inicio');
+            const permanente = document.getElementById('placa-permanente');
+            const labels = document.querySelectorAll('.placa-option');
+            if (!labels.length || !soloInicio) return;
+            labels.forEach((lab, i) => {
+                const isSelected = (i === 0 && soloInicio.checked) || (i === 1 && permanente && permanente.checked);
+                lab.style.background = isSelected ? '#fff' : '#e0e0e0';
+                lab.style.borderColor = isSelected ? '#0A246A' : 'transparent';
+            });
+        }
+        document.querySelectorAll('input[name="placa-mode"]').forEach(r => {
+            r.addEventListener('change', updatePlacaOptionStyle);
+        });
+        updatePlacaOptionStyle();
+
         // Función para actualizar el preview de la portada
         async function updateCoverPreview() {
             // Solo actualizar si hay un video cargado
@@ -1507,7 +1584,11 @@ FORMATO ESTRICTO: TÍTULO: [corto, mayúsculas, máx 5 palabras] luego TEXTO: [c
                         video_data: videoBase64,
                         cover_image: coverImageData,
                         watermark_image: watermarkImageData,
-                        title: els.titleInput.value
+                        title: els.titleInput.value,
+                        placa_permanente: els.placaPermanente && els.placaPermanente.checked,
+                        video_zoom: els.videoZoom ? parseInt(els.videoZoom.value, 10) : 100,
+                        video_pos_x: els.videoPosX ? parseInt(els.videoPosX.value, 10) : 0,
+                        video_pos_y: els.videoPosY ? parseInt(els.videoPosY.value, 10) : 0
                     })
                 });
                 
