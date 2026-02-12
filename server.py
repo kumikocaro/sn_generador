@@ -12,8 +12,13 @@ import os
 import tempfile
 import base64
 import re
+import urllib.request
+import urllib.error
 from PIL import Image, ImageDraw, ImageFont
 import io
+
+# API pública de respaldo cuando yt-dlp falla (ej. Instagram bloquea IP de Render)
+INSTAGRAM_API_FALLBACK = 'https://instagram-reels-downloader-tau.vercel.app/api/video'
 
 app = Flask(__name__)
 CORS(app)  # Permitir peticiones desde el frontend
@@ -119,39 +124,57 @@ def download_instagram():
             print(f"🌐 Descargando video: {instagram_url}")
             result = subprocess.run(command, capture_output=True, text=True, timeout=60)
             
-            if result.returncode != 0:
-                error_msg = (result.stderr or result.stdout or '')[:500]
-                print(f"❌ Error yt-dlp: {error_msg}")
-                return jsonify({
-                    'error': 'No se pudo descargar desde Instagram. En servidores en la nube Instagram suele bloquear. Probá subir el video manualmente abajo.',
-                    'debug': error_msg
-                }), 500
-            
-            # Verificar que el archivo existe
-            if not os.path.exists(output_file):
-                return jsonify({'error': 'Video no descargado'}), 500
-            
-            # Leer video y convertir a base64
-            with open(output_file, 'rb') as f:
-                video_data = f.read()
-            
-            video_base64 = base64.b64encode(video_data).decode('utf-8')
-            
-            print(f"✅ Video descargado: {len(video_data) / 1024 / 1024:.2f} MB")
-            
-            # Extraer descripción y título de los metadatos
+            video_data = None
+            method = 'yt-dlp-local'
             description = metadata.get('description', '') or ''
             title = metadata.get('title', '') or ''
-            
-            # Limpiar descripción (a veces viene con mucho texto extra)
             if description:
-                # Instagram a veces pone el título al inicio de la descripción
                 description = description.strip()
+            
+            if result.returncode == 0 and os.path.exists(output_file):
+                with open(output_file, 'rb') as f:
+                    video_data = f.read()
+            
+            # Si yt-dlp falló (común en Render: Instagram bloquea IP), usar API pública de respaldo
+            if not video_data:
+                print(f"❌ yt-dlp falló, intentando API de respaldo: {INSTAGRAM_API_FALLBACK}")
+                try:
+                    api_url = f"{INSTAGRAM_API_FALLBACK}?postUrl={urllib.request.quote(instagram_url)}&enhanced=true"
+                    req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0 (compatible; SN-Video/1.0)'})
+                    with urllib.request.urlopen(req, timeout=25) as resp:
+                        api_json = json.loads(resp.read().decode())
+                    if api_json.get('status') == 'success' or api_json.get('success'):
+                        data = api_json.get('data') or {}
+                        video_url = data.get('videoUrl')
+                        if not video_url and isinstance(data.get('medias'), list) and len(data['medias']) > 0:
+                            m = data['medias'][0]
+                            video_url = m.get('url') if isinstance(m, dict) else None
+                        if video_url:
+                            with urllib.request.urlopen(urllib.request.Request(video_url, headers={'User-Agent': 'Mozilla/5.0'}), timeout=60) as vresp:
+                                video_data = vresp.read()
+                            if data.get('title'):
+                                title = data.get('title', '') or title
+                            method = 'api-fallback'
+                            print(f"✅ Video descargado vía API: {len(video_data) / 1024 / 1024:.2f} MB")
+                except Exception as api_err:
+                    print(f"❌ API de respaldo falló: {api_err}")
+                    error_msg = (result.stderr or result.stdout or '')[:500] if result.returncode != 0 else str(api_err)
+                    return jsonify({
+                        'error': 'No se pudo descargar el video. Probá de nuevo o subí el video manualmente.',
+                        'debug': error_msg
+                    }), 500
+            
+            if not video_data:
+                return jsonify({'error': 'Video no descargado', 'debug': (result.stderr or result.stdout or '')[:300]}), 500
+            
+            video_base64 = base64.b64encode(video_data).decode('utf-8')
+            if method == 'yt-dlp-local':
+                print(f"✅ Video descargado (yt-dlp): {len(video_data) / 1024 / 1024:.2f} MB")
             
             return jsonify({
                 'success': True,
                 'video_data': video_base64,
-                'method': 'yt-dlp-local',
+                'method': method,
                 'size': len(video_data),
                 'shortcode': shortcode,
                 'description': description,
